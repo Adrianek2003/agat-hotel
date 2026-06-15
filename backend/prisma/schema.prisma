@@ -1,0 +1,6 @@
+model Room {
+  id        Int     @id @default(autoincrement())
+  name      String
+  price     Float
+  available Boolean @default(true)
+}
