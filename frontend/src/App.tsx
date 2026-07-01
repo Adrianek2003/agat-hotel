@@ -1,121 +1,90 @@
-import { useEffect, useRef } from "react";
+import { useState } from "react";
+import LandingPage from "./components/LandingPage";
+import HotelScene from "./components/HotelScene";
 
-import {
-  Engine,
-  Scene,
-  ArcRotateCamera,
-  Vector3,
-  HemisphericLight,
-  MeshBuilder,
-  StandardMaterial,
-  Color3,
-  PointerEventTypes
-} from "@babylonjs/core";
+type ViewType = "landing" | "hotel" | "rooms" | "gallery" | "contact" | "booking";
 
 function App() {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-
-  useEffect(() => {
-    if (!canvasRef.current) return;
-
-    const engine = new Engine(canvasRef.current, true);
-    const scene = new Scene(engine);
-
-    scene.clearColor = new Color3(0.08, 0.09, 0.12).toColor4(1);
-
-    const camera = new ArcRotateCamera(
-      "camera",
-      Math.PI / 2,
-      Math.PI / 3,
-      15,
-      new Vector3(0, 0, 0),
-      scene
+  const [view, setView] = useState<ViewType>("landing");
+  if (view === "landing") {
+    return (
+      <LandingPage 
+        onEnter={() => setView("hotel")}
+        onStart={() => setView("landing")}
+        onRooms={() => setView("rooms")}
+        onGallery={() => setView("gallery")}
+        onContact={() => setView("contact")}
+        onBooking={() => setView("booking")}
+      />
     );
+  }
+  if (view === "hotel") {
+    return <HotelScene onBack={() => setView("landing")} />;
+  }
 
-    camera.attachControl(canvasRef.current, true);
-    camera.lowerRadiusLimit = 8;
-    camera.upperRadiusLimit = 30;
+  const placeholderStyle: React.CSSProperties = {
+    minHeight: "100vh",
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#0b1020",
+    color: "white",
+    fontFamily: "sans-serif",
+    gap: "20px"
+  };
 
-    const light = new HemisphericLight(
-      "light",
-      new Vector3(0, 1, 0),
-      scene
+  const buttonStyle: React.CSSProperties = {
+    padding: "12px 24px",
+    borderRadius: "20px",
+    border: "none",
+    background: "#4da3ff",
+    color: "white",
+    cursor: "pointer",
+    fontWeight: "bold"
+  };
+
+  if (view === "rooms") {
+    return (
+      <div style={placeholderStyle}>
+        <h2>🛏️ Nasze Pokoje & Apartamenty</h2>
+        <p>Lista luksusowych pokoi oraz konfigurator rezerwacji już wkrótce.</p>
+        <button style={buttonStyle} onClick={() => setView("landing")}>Wróć do strony głównej</button>
+      </div>
     );
-    light.intensity = 0.9;
+  }
 
-    const ground = MeshBuilder.CreateGround("ground", {
-      width: 20,
-      height: 20
-    });
+  if (view === "gallery") {
+    return (
+      <div style={placeholderStyle}>
+        <h2>🖼️ Galeria Zdjęć</h2>
+        <p>Przeglądaj zdjęcia wnętrz, basenu oraz restauracji hotelu Agat.</p>
+        <button style={buttonStyle} onClick={() => setView("landing")}>Wróć do strony głównej</button>
+      </div>
+    );
+  }
 
-    const groundMat = new StandardMaterial("groundMat", scene);
-    groundMat.diffuseColor = new Color3(0.2, 0.2, 0.25);
-    ground.material = groundMat;
+  if (view === "contact") {
+    return (
+      <div style={placeholderStyle}>
+        <h2>📞 Skontaktuj się z nami</h2>
+        <p>Recepcja: +48 123 456 789 | Email: kontakt@agathotel.pl</p>
+        <button style={buttonStyle} onClick={() => setView("landing")}>Wróć do strony głównej</button>
+      </div>
+    );
+  }
 
-    const rooms: any[] = [];
+  if (view === "booking") {
+    return (
+      <div style={placeholderStyle}>
+        <h2>📅 System Rezerwacji Online</h2>
+        <p>Wybierz datę, liczbę gości i zarezerwuj swój pobyt w kilka sekund.</p>
+        <button style={buttonStyle} onClick={() => setView("landing")}>Wróć do strony głównej</button>
+      </div>
+    );
+  }
 
-    const createRoom = (name: string, x: number, z: number) => {
-      const room = MeshBuilder.CreateBox(name, {
-        width: 2,
-        height: 1.5,
-        depth: 2
-      });
-
-      room.position = new Vector3(x, 0.75, z);
-
-      const mat = new StandardMaterial(name + "Mat", scene);
-      mat.diffuseColor = new Color3(0.3, 0.6, 0.9);
-      room.material = mat;
-
-      room.metadata = { name };
-
-      rooms.push(room);
-      return room;
-    };
-
-    createRoom("Room 101", -4, -2);
-    createRoom("Room 102", 0, -2);
-    createRoom("Room 103", 4, -2);
-    createRoom("Room 201", -4, 2);
-    createRoom("Room 202", 0, 2);
-    createRoom("Room 203", 4, 2);
-
-    scene.onPointerObservable.add((pointerInfo) => {
-      const pick = pointerInfo.pickInfo;
-
-      if (pick?.hit && pick.pickedMesh?.metadata?.name) {
-        const room = pick.pickedMesh;
-
-        if (pointerInfo.type === PointerEventTypes.POINTERPICK) {
-          alert(`Wybrano: ${room.metadata.name}`);
-        }
-      }
-    });
-
-    engine.runRenderLoop(() => {
-      scene.render();
-    });
-
-    window.addEventListener("resize", () => {
-      engine.resize();
-    });
-
-    return () => {
-      scene.dispose();
-      engine.dispose();
-    };
-  }, []);
-
-  return (
-    <canvas
-      ref={canvasRef}
-      style={{
-        width: "100vw",
-        height: "100vh",
-        display: "block"
-      }}
-    />
-  );
+  return null;
 }
 
 export default App;
