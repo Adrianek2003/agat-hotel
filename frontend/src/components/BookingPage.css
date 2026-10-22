@@ -96,6 +96,17 @@
   margin-bottom: 14px;
 }
 
+.booking-summary__error {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 128, 128, 0.35);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 128, 128, 0.1);
+  color: var(--danger);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
 .booking-confirmation {
   max-width: 640px;
   margin: 0 auto;

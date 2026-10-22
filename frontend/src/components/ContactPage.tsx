@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
+import { sendContactMessage } from "../api";
 import "./ContactPage.css";
 
 type ContactField = "name" | "email" | "topic" | "message";
@@ -65,21 +66,38 @@ function ContactPage() {
   const [form, setForm] = useState<ContactForm>(INITIAL_FORM);
   const [errors, setErrors] = useState<Partial<Record<ContactField, string>>>({});
   const [sent, setSent] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const updateField = (field: ContactField, value: string) => {
     setForm((current) => ({ ...current, [field]: value }));
     setErrors((current) => ({ ...current, [field]: undefined }));
     setSent(false);
+    setSubmitError(null);
   };
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const nextErrors = validate(form);
     setErrors(nextErrors);
 
-    if (Object.keys(nextErrors).length === 0) {
+    if (Object.keys(nextErrors).length > 0) return;
+
+    setSubmitting(true);
+    setSubmitError(null);
+
+    try {
+      await sendContactMessage(form);
       setSent(true);
       setForm(INITIAL_FORM);
+    } catch (error) {
+      setSubmitError(
+        error instanceof Error
+          ? error.message
+          : "Nie udało się wysłać wiadomości.",
+      );
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -176,13 +194,23 @@ function ContactPage() {
             </div>
 
             <div className="contact-form__actions">
-              <button type="submit" className="btn btn--primary">
-                Wyślij wiadomość
+              <button
+                type="submit"
+                className="btn btn--primary"
+                disabled={submitting}
+              >
+                {submitting ? "Wysyłanie…" : "Wyślij wiadomość"}
               </button>
               <p className="form-note">
-                Formularz demonstracyjny — wiadomość nie jest wysyłana na serwer.
+                Wiadomość trafi bezpośrednio do skrzynki recepcji hotelu.
               </p>
             </div>
+
+            {submitError && (
+              <p className="contact-form__error" role="alert">
+                {submitError}
+              </p>
+            )}
 
             {sent && (
               <p className="contact-form__success" role="status">

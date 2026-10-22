@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
+import { createBooking } from "../api";
 import { getRoomById, ROOMS } from "../data/rooms";
-import type { Room } from "../data/rooms";
 import type { Navigate } from "../types";
 import "./BookingPage.css";
 
@@ -23,7 +23,7 @@ interface BookingForm {
 
 interface Confirmation {
   code: string;
-  room: Room;
+  roomName: string;
   checkIn: string;
   checkOut: string;
   guests: number;
@@ -125,6 +125,8 @@ function BookingPage({ selectedRoomId, onNavigate }: Props) {
   });
   const [errors, setErrors] = useState<BookingErrors>({});
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const selectedRoom = getRoomById(form.roomId);
   const nights = countNights(form.checkIn, form.checkOut);
@@ -150,24 +152,49 @@ function BookingPage({ selectedRoomId, onNavigate }: Props) {
     });
 
     setErrors((current) => ({ ...current, [field]: undefined }));
+    setSubmitError(null);
   };
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const nextErrors = validate(form);
     setErrors(nextErrors);
 
     if (Object.keys(nextErrors).length > 0 || !selectedRoom) return;
 
-    setConfirmation({
-      code: `AG-${Math.random().toString(36).slice(2, 8).toUpperCase()}`,
-      room: selectedRoom,
-      checkIn: form.checkIn,
-      checkOut: form.checkOut,
-      guests: Number(form.guests),
-      nights,
-      total,
-    });
+    setSubmitting(true);
+    setSubmitError(null);
+
+    try {
+      const booking = await createBooking({
+        roomId: form.roomId,
+        checkIn: form.checkIn,
+        checkOut: form.checkOut,
+        guests: Number(form.guests),
+        firstName: form.firstName,
+        lastName: form.lastName,
+        email: form.email,
+        phone: form.phone,
+      });
+
+      setConfirmation({
+        code: booking.code,
+        roomName: booking.room.name,
+        checkIn: booking.checkIn,
+        checkOut: booking.checkOut,
+        guests: booking.guests,
+        nights: booking.nights,
+        total: booking.total,
+      });
+    } catch (error) {
+      setSubmitError(
+        error instanceof Error
+          ? error.message
+          : "Nie udało się zapisać rezerwacji.",
+      );
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (confirmation) {
@@ -175,17 +202,17 @@ function BookingPage({ selectedRoomId, onNavigate }: Props) {
       <section className="page booking-page">
         <div className="container">
           <div className="booking-confirmation card">
-            <p className="eyebrow">Rezerwacja demonstracyjna</p>
+            <p className="eyebrow">Rezerwacja</p>
             <h1 className="page-title">Dziękujemy za rezerwację!</h1>
             <p className="page-subtitle">
-              Twoja rezerwacja została zapisana lokalnie w przeglądarce. Numer
+              Twoja rezerwacja została zapisana w systemie hotelu. Numer
               potwierdzenia: <strong>{confirmation.code}</strong>
             </p>
 
             <dl className="booking-summary__list">
               <div>
                 <dt>Pokój</dt>
-                <dd>{confirmation.room.name}</dd>
+                <dd>{confirmation.roomName}</dd>
               </div>
               <div>
                 <dt>Przyjazd</dt>
@@ -238,8 +265,8 @@ function BookingPage({ selectedRoomId, onNavigate }: Props) {
           <p className="eyebrow">Rezerwacja</p>
           <h1 className="page-title">Zarezerwuj swój pobyt</h1>
           <p className="page-subtitle">
-            Wybierz pokój, termin i liczbę gości. Formularz jest demonstracyjny —
-            rezerwacja nie jest jeszcze wysyłana do systemu hotelu.
+            Wybierz pokój, termin i liczbę gości. Rezerwacja zostanie zapisana
+            bezpośrednio w systemie hotelu.
           </p>
         </div>
 
@@ -428,14 +455,20 @@ function BookingPage({ selectedRoomId, onNavigate }: Props) {
               type="submit"
               form="booking-form"
               className="btn btn--primary booking-summary__submit"
-              disabled={!selectedRoom}
+              disabled={!selectedRoom || submitting}
             >
-              Potwierdź rezerwację
+              {submitting ? "Przetwarzanie…" : "Potwierdź rezerwację"}
             </button>
 
+            {submitError && (
+              <p className="booking-summary__error" role="alert">
+                {submitError}
+              </p>
+            )}
+
             <p className="form-note">
-              Rezerwacja demonstracyjna. Płatność i potwierdzenie e-mail zostaną
-              dodane wraz z backendem.
+              Rezerwacja zostanie zapisana w bazie hotelu. Płatność online będzie
+              kolejnym etapem.
             </p>
           </aside>
         </div>

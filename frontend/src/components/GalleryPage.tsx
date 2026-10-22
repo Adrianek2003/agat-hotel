@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { fetchMedia, resolveMediaUrl } from "../api";
+import type { MediaAsset } from "../api";
 import "./GalleryPage.css";
 
 interface GalleryItem {
@@ -6,6 +8,7 @@ interface GalleryItem {
   title: string;
   description: string;
   tone: string;
+  imageUrl?: string;
 }
 
 const GALLERY_ITEMS: GalleryItem[] = [
@@ -55,6 +58,29 @@ const GALLERY_ITEMS: GalleryItem[] = [
 
 function GalleryPage() {
   const [selected, setSelected] = useState<GalleryItem | null>(null);
+  const [media, setMedia] = useState<MediaAsset[]>([]);
+  const [mediaError, setMediaError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+
+    fetchMedia()
+      .then((assets) => {
+        if (active) setMedia(assets);
+      })
+      .catch((error: unknown) => {
+        if (!active) return;
+        setMediaError(
+          error instanceof Error
+            ? error.message
+            : "Nie udało się wczytać wgranych plików.",
+        );
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (!selected) return;
@@ -67,6 +93,17 @@ function GalleryPage() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [selected]);
 
+  const galleryItems: GalleryItem[] = [
+    ...media.map((asset) => ({
+      id: `media-${asset.id}`,
+      title: asset.title,
+      description: `Plik wgrany do galerii hotelu (${asset.mimeType}).`,
+      tone: "media",
+      imageUrl: resolveMediaUrl(asset.url),
+    })),
+    ...GALLERY_ITEMS,
+  ];
+
   return (
     <section className="page gallery-page">
       <div className="container">
@@ -77,10 +114,16 @@ function GalleryPage() {
             Wybrane przestrzenie hotelu Agat — od recepcji i pokoi, przez
             restaurację, aż po strefę wellness i ogród.
           </p>
+          {mediaError && (
+            <p className="gallery-note">
+              Nie udało się wczytać plików z serwera. Wyświetlamy galerię
+              domyślną.
+            </p>
+          )}
         </div>
 
         <div className="gallery-grid">
-          {GALLERY_ITEMS.map((item, index) => (
+          {galleryItems.map((item, index) => (
             <button
               key={item.id}
               type="button"
@@ -90,7 +133,15 @@ function GalleryPage() {
               onClick={() => setSelected(item)}
               aria-label={`Powiększ: ${item.title}`}
             >
-              <span className="gallery-tile__pattern" aria-hidden="true" />
+              {item.imageUrl ? (
+                <img
+                  className="gallery-tile__image"
+                  src={item.imageUrl}
+                  alt={item.title}
+                />
+              ) : (
+                <span className="gallery-tile__pattern" aria-hidden="true" />
+              )}
               <span className="gallery-tile__caption">
                 <span className="gallery-tile__title">{item.title}</span>
                 <span className="gallery-tile__hint">Kliknij, aby powiększyć</span>
@@ -124,7 +175,15 @@ function GalleryPage() {
             </button>
 
             <div className={`gallery-modal__visual gallery-tile--${selected.tone}`}>
-              <span className="gallery-tile__pattern" aria-hidden="true" />
+              {selected.imageUrl ? (
+                <img
+                  className="gallery-tile__image"
+                  src={selected.imageUrl}
+                  alt={selected.title}
+                />
+              ) : (
+                <span className="gallery-tile__pattern" aria-hidden="true" />
+              )}
             </div>
 
             <h2 id="gallery-modal-title" className="gallery-modal__title">
