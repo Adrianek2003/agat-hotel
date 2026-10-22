@@ -1,0 +1,219 @@
+.gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-auto-rows: 220px;
+  gap: 20px;
+}
+
+.gallery-tile {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  padding: 0;
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-lg);
+  background: #101729;
+  cursor: zoom-in;
+  isolation: isolate;
+  transition: transform var(--transition), border-color var(--transition),
+    box-shadow var(--transition);
+}
+
+.gallery-tile:hover {
+  transform: translateY(-4px);
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-card);
+}
+
+.gallery-tile--featured {
+  grid-column: span 2;
+  grid-row: span 2;
+}
+
+.gallery-tile__pattern {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.5s ease;
+}
+
+.gallery-tile:hover .gallery-tile__pattern {
+  transform: scale(1.04);
+}
+
+.gallery-tile__pattern::before,
+.gallery-tile__pattern::after {
+  content: "";
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(2px);
+}
+
+.gallery-tile__pattern::before {
+  width: 70%;
+  height: 70%;
+  top: -15%;
+  right: -10%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.22), transparent 70%);
+}
+
+.gallery-tile__pattern::after {
+  width: 60%;
+  height: 60%;
+  bottom: -18%;
+  left: -12%;
+  background: radial-gradient(circle, rgba(0, 0, 0, 0.35), transparent 70%);
+}
+
+.gallery-tile--lobby {
+  background: linear-gradient(135deg, #1c3a63, #4da3ff);
+}
+
+.gallery-tile--rooms {
+  background: linear-gradient(135deg, #3a2f4f, #8d6cc9);
+}
+
+.gallery-tile--restaurant {
+  background: linear-gradient(135deg, #4a2a1c, #d9864d);
+}
+
+.gallery-tile--wellness {
+  background: linear-gradient(135deg, #1b3d38, #48b39c);
+}
+
+.gallery-tile--pool {
+  background: linear-gradient(135deg, #12384d, #3bb6d6);
+}
+
+.gallery-tile--garden {
+  background: linear-gradient(135deg, #253a22, #6bab4f);
+}
+
+.gallery-tile__caption {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 22px;
+  background: linear-gradient(to top, rgba(5, 8, 16, 0.9), transparent);
+  text-align: left;
+}
+
+.gallery-tile__title {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.gallery-tile--featured .gallery-tile__title {
+  font-size: 1.5rem;
+}
+
+.gallery-tile__hint {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity var(--transition), transform var(--transition);
+}
+
+.gallery-tile:hover .gallery-tile__hint,
+.gallery-tile:focus-visible .gallery-tile__hint {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.gallery-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(4, 6, 12, 0.78);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.gallery-modal__content {
+  position: relative;
+  width: min(680px, 100%);
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 20px 24px 28px;
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-lg);
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-card);
+}
+
+.gallery-modal__visual {
+  position: relative;
+  height: 280px;
+  margin-bottom: 22px;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+}
+
+.gallery-modal__close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 2;
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--border-glass);
+  border-radius: 50%;
+  background: rgba(8, 12, 24, 0.75);
+  color: var(--text);
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color var(--transition);
+}
+
+.gallery-modal__close:hover {
+  background: rgba(8, 12, 24, 0.95);
+}
+
+.gallery-modal__title {
+  margin: 0 0 10px;
+  font-size: 1.55rem;
+}
+
+.gallery-modal__description {
+  margin: 0;
+  color: var(--text-muted);
+  line-height: 1.7;
+}
+
+@media (max-width: 900px) {
+  .gallery-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-rows: 200px;
+  }
+
+  .gallery-tile--featured {
+    grid-column: span 2;
+    grid-row: span 1;
+  }
+}
+
+@media (max-width: 600px) {
+  .gallery-grid {
+    grid-template-columns: 1fr;
+    grid-auto-rows: 200px;
+  }
+
+  .gallery-tile--featured {
+    grid-column: span 1;
+  }
+
+  .gallery-modal__visual {
+    height: 200px;
+  }
+}

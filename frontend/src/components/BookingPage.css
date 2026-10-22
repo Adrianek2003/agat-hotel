@@ -1,0 +1,136 @@
+.booking-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(280px, 0.75fr);
+  gap: 28px;
+  align-items: start;
+}
+
+.booking-form {
+  padding: 32px;
+}
+
+.booking-form:hover {
+  transform: none;
+}
+
+.booking-form__title {
+  margin: 0 0 24px;
+  font-size: 1.35rem;
+}
+
+.booking-summary {
+  position: sticky;
+  top: 104px;
+  padding: 28px;
+}
+
+.booking-summary:hover {
+  transform: none;
+}
+
+.booking-summary__room {
+  margin: 10px 0 6px;
+  font-size: 1.4rem;
+}
+
+.booking-summary__description {
+  margin: 0 0 20px;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.booking-summary__placeholder {
+  margin: 14px 0 20px;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.booking-summary__list {
+  display: grid;
+  gap: 10px;
+  margin: 18px 0;
+  padding: 18px 0;
+  border-top: 1px solid var(--border-glass);
+  border-bottom: 1px solid var(--border-glass);
+}
+
+.booking-summary__list div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.booking-summary__list dt {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+.booking-summary__list dd {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-align: right;
+}
+
+.booking-summary__total {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.booking-summary__total span {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.booking-summary__total strong {
+  font-size: 1.6rem;
+}
+
+.booking-summary__submit {
+  width: 100%;
+  margin-bottom: 14px;
+}
+
+.booking-confirmation {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 40px;
+}
+
+.booking-confirmation:hover {
+  transform: none;
+}
+
+.booking-confirmation .page-subtitle {
+  margin-top: 14px;
+}
+
+.booking-confirmation__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 28px;
+}
+
+@media (max-width: 900px) {
+  .booking-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .booking-summary {
+    position: static;
+  }
+}
+
+@media (max-width: 600px) {
+  .booking-form,
+  .booking-summary,
+  .booking-confirmation {
+    padding: 24px;
+  }
+}

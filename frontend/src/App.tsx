@@ -1,90 +1,69 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
+import BookingPage from "./components/BookingPage";
+import ContactPage from "./components/ContactPage";
+import GalleryPage from "./components/GalleryPage";
 import LandingPage from "./components/LandingPage";
-import HotelScene from "./components/HotelScene";
+import Layout from "./components/Layout";
+import RoomsPage from "./components/RoomsPage";
+import type { ViewType } from "./types";
 
-type ViewType = "landing" | "hotel" | "rooms" | "gallery" | "contact" | "booking";
+const HotelScene = lazy(() => import("./components/HotelScene"));
 
 function App() {
   const [view, setView] = useState<ViewType>("landing");
-  if (view === "landing") {
-    return (
-      <LandingPage 
-        onEnter={() => setView("hotel")}
-        onStart={() => setView("landing")}
-        onRooms={() => setView("rooms")}
-        onGallery={() => setView("gallery")}
-        onContact={() => setView("contact")}
-        onBooking={() => setView("booking")}
-      />
-    );
-  }
+  const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
+
+  const navigate = (nextView: ViewType) => {
+    if (nextView !== "booking") {
+      setSelectedRoomId(null);
+    }
+    setView(nextView);
+  };
+
+  const bookRoom = (roomId: string) => {
+    setSelectedRoomId(roomId);
+    setView("booking");
+  };
+
   if (view === "hotel") {
-    return <HotelScene onBack={() => setView("landing")} />;
-  }
-
-  const placeholderStyle: React.CSSProperties = {
-    minHeight: "100vh",
-    display: "flex",
-    flexDirection: "column",
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#0b1020",
-    color: "white",
-    fontFamily: "sans-serif",
-    gap: "20px"
-  };
-
-  const buttonStyle: React.CSSProperties = {
-    padding: "12px 24px",
-    borderRadius: "20px",
-    border: "none",
-    background: "#4da3ff",
-    color: "white",
-    cursor: "pointer",
-    fontWeight: "bold"
-  };
-
-  if (view === "rooms") {
     return (
-      <div style={placeholderStyle}>
-        <h2>🛏️ Nasze Pokoje & Apartamenty</h2>
-        <p>Lista luksusowych pokoi oraz konfigurator rezerwacji już wkrótce.</p>
-        <button style={buttonStyle} onClick={() => setView("landing")}>Wróć do strony głównej</button>
-      </div>
+      <Suspense
+        fallback={
+          <div className="hotel-loading" role="status">
+            Ładowanie sceny 3D…
+          </div>
+        }
+      >
+        <HotelScene onBack={() => navigate("landing")} onBook={bookRoom} />
+      </Suspense>
     );
   }
 
-  if (view === "gallery") {
-    return (
-      <div style={placeholderStyle}>
-        <h2>🖼️ Galeria Zdjęć</h2>
-        <p>Przeglądaj zdjęcia wnętrz, basenu oraz restauracji hotelu Agat.</p>
-        <button style={buttonStyle} onClick={() => setView("landing")}>Wróć do strony głównej</button>
-      </div>
-    );
-  }
+  return (
+    <Layout view={view} onNavigate={navigate}>
+      {view === "landing" && (
+        <LandingPage
+          onEnter={() => navigate("hotel")}
+          onRooms={() => navigate("rooms")}
+          onGallery={() => navigate("gallery")}
+          onContact={() => navigate("contact")}
+          onBooking={() => navigate("booking")}
+        />
+      )}
 
-  if (view === "contact") {
-    return (
-      <div style={placeholderStyle}>
-        <h2>📞 Skontaktuj się z nami</h2>
-        <p>Recepcja: +48 123 456 789 | Email: kontakt@agathotel.pl</p>
-        <button style={buttonStyle} onClick={() => setView("landing")}>Wróć do strony głównej</button>
-      </div>
-    );
-  }
+      {view === "rooms" && (
+        <RoomsPage onBook={bookRoom} onNavigate={navigate} />
+      )}
 
-  if (view === "booking") {
-    return (
-      <div style={placeholderStyle}>
-        <h2>📅 System Rezerwacji Online</h2>
-        <p>Wybierz datę, liczbę gości i zarezerwuj swój pobyt w kilka sekund.</p>
-        <button style={buttonStyle} onClick={() => setView("landing")}>Wróć do strony głównej</button>
-      </div>
-    );
-  }
+      {view === "gallery" && <GalleryPage />}
 
-  return null;
+      {view === "contact" && <ContactPage />}
+
+      {view === "booking" && (
+        <BookingPage selectedRoomId={selectedRoomId} onNavigate={navigate} />
+      )}
+    </Layout>
+  );
 }
 
 export default App;
