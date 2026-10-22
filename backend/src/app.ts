@@ -7,7 +7,7 @@ import { bookingsRouter } from "./routes/bookings";
 import { contactRouter } from "./routes/contact";
 import { mediaRouter } from "./routes/media";
 import { roomsRouter } from "./routes/rooms";
-import { uploadDir } from "./storage/upload";
+import { uploadDir } from "./storage/files";
 
 export const app = express();
 

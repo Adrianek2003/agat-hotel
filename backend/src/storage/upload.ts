@@ -1,13 +1,7 @@
-import { mkdirSync } from "node:fs";
-import { extname, resolve } from "node:path";
-import { randomUUID } from "node:crypto";
+import { extname } from "node:path";
 import multer from "multer";
 import { env } from "../config/env";
 import { ApiError } from "../lib/ApiError";
-
-export const uploadDir = resolve(process.cwd(), env.uploadDir);
-
-mkdirSync(uploadDir, { recursive: true });
 
 const ALLOWED_EXTENSIONS = new Set([
   ".jpg",
@@ -35,18 +29,8 @@ const ALLOWED_MIME_TYPES = new Set([
   "application/json",
 ]);
 
-const storage = multer.diskStorage({
-  destination: (_req, _file, callback) => {
-    callback(null, uploadDir);
-  },
-  filename: (_req, file, callback) => {
-    const extension = extname(file.originalname).toLowerCase();
-    callback(null, `${randomUUID()}${extension}`);
-  },
-});
-
 export const uploadSingleFile = multer({
-  storage,
+  storage: multer.memoryStorage(),
   limits: {
     fileSize: env.maxUploadMb * 1024 * 1024,
     files: 1,

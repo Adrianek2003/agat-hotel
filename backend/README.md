@@ -7,31 +7,26 @@ Prosty backend dla strony hotelu: formularze, baza danych i przechowywanie plik�
 
 - **Node.js 20+ / TypeScript**
 - **Express 5** — API HTTP
-- **Prisma 6 + SQLite** — baza danych
-- **Multer** — wgrywanie plików na dysk
-- **Zod** — walidacja danych formularzy
-
-## Co obsługuje
-
-- listę pokoi z bazy danych,
-- zapis rezerwacji z walidacją terminu, liczby gości i kolizji rezerwacji,
-- zapis wiadomości z formularza kontaktowego,
-- wgrywanie plików do `uploads/` i publiczne ich udostępnianie,
-- listę plików wykorzystywaną przez galerię na froncie.
+- **Prisma 6 + PostgreSQL** — baza danych
+- **Neon Object Storage / S3** — pliki na produkcji
+- **Multer** — odbiór plików z formularzy
+- **Zod** — walidacja danych
 
 ## Uruchomienie lokalne
 
-Wymagania: Node.js 20 lub nowszy.
+Wymagania: Node.js 20+ oraz Docker (albo zewnętrzna baza PostgreSQL, np. Neon).
+
+Z katalogu głównego repozytorium uruchom bazę:
+
+```bash
+docker compose up -d db
+```
+
+Następnie:
 
 ```bash
 cd backend
 cp .env.example .env
-```
-
-Otwórz `.env` i ustaw własny `ADMIN_TOKEN` (np. wynik `openssl rand -hex 32`).
-Następnie:
-
-```bash
 npm install
 npm run db:migrate
 npm run db:seed
@@ -44,6 +39,9 @@ API będzie dostępne pod `http://localhost:4000`. Sprawdzenie:
 curl http://localhost:4000/api/health
 ```
 
+Domyślnie pliki są zapisywane lokalnie w `backend/uploads/` (`STORAGE_DRIVER=local`).
+Nie musisz konfigurować S3, żeby pracować lokalnie.
+
 Frontend uruchamiasz osobno:
 
 ```bash
@@ -54,6 +52,18 @@ npm run dev
 Vite przekazuje `/api` i `/uploads` do `http://localhost:4000`, więc lokalnie nie
 trzeba ustawiać `VITE_API_URL`.
 
+Zatrzymanie bazy:
+
+```bash
+docker compose stop db
+```
+
+Usunięcie bazy wraz z danymi:
+
+```bash
+docker compose down -v
+```
+
 ## Zmienne środowiskowe
 
 Plik `backend/.env` (wzór: `.env.example`):
@@ -61,12 +71,22 @@ Plik `backend/.env` (wzór: `.env.example`):
 | Zmienna | Opis | Przykład |
 | --- | --- | --- |
 | `PORT` | Port serwera | `4000` |
-| `DATABASE_URL` | Adres bazy SQLite | `file:./dev.db` |
+| `DATABASE_URL` | Connection string PostgreSQL | `postgresql://agat:agat@localhost:5432/agat?schema=public` |
 | `CORS_ORIGIN` | Dozwolone adresy frontendu, oddzielone przecinkami | `https://twoja-apka.vercel.app` |
-| `PUBLIC_BASE_URL` | Publiczny adres API używany w URL-ach plików | `https://agat-api.onrender.com` |
-| `UPLOAD_DIR` | Katalog na wgrane pliki | `uploads` |
-| `MAX_UPLOAD_MB` | Maksymalny rozmiar pliku | `50` |
+| `PUBLIC_BASE_URL` | Publiczny adres API | `https://agat-hotel-api.onrender.com` |
+| `STORAGE_DRIVER` | `local` albo `s3` | `s3` |
+| `UPLOAD_DIR` | Katalog plików przy `local` | `uploads` |
+| `MAX_UPLOAD_MB` | Maksymalny rozmiar pliku | `25` |
 | `ADMIN_TOKEN` | Token do wgrywania/usuwania plików | długi losowy ciąg |
+| `S3_ENDPOINT` | Endpoint S3 (Neon/R2) | `https://br-....storage.c-2.eu-central-1.aws.neon.tech` |
+| `S3_REGION` | Region S3 | `eu-central-1` |
+| `S3_BUCKET` | Nazwa bucketu | `agat-media` |
+| `S3_ACCESS_KEY_ID` | Klucz dostępu S3 | — |
+| `S3_SECRET_ACCESS_KEY` | Sekret S3 | — |
+| `S3_PUBLIC_BASE_URL` | Opcjonalny publiczny prefix plików | `https://.../agat-media` |
+
+Przy `STORAGE_DRIVER=s3` aplikacja nie wystartuje, jeśli brakuje którejś ze zmiennych
+`S3_*`. Dzięki temu błąd konfiguracji wychodzi od razu, a nie przy pierwszym uploadzie.
 
 ## API
 
@@ -107,6 +127,8 @@ podstawie ceny z bazy. Odpowiedź zawiera numer rezerwacji (`code`) i podsumowan
 }
 ```
 
+Dozwolone tematy: `rezerwacja`, `pobyt`, `konferencja`, `inne`.
+
 ### `GET /api/media`
 
 Publiczna lista wgranych plików — z niej korzysta galeria.
@@ -116,14 +138,14 @@ Publiczna lista wgranych plików — z niej korzysta galeria.
 Multipart, pole pliku: `file`, opcjonalny `title`.
 
 ```bash
-curl -X POST http://localhost:4000/api/media \
+curl -X POST https://agat-hotel-api.onrender.com/api/media \
   -H "Authorization: Bearer TWOJ_ADMIN_TOKEN" \
   -F "title=Recepcja" \
   -F "file=@recepcja.jpg"
 ```
 
 Dozwolone rozszerzenia: jpg, jpeg, png, webp, gif, avif, mp4, webm, glb, gltf,
-bin, obj, fbx, stl, usdz, pdf. Limity ustawiasz przez `MAX_UPLOAD_MB`.
+bin, obj, fbx, stl, usdz, pdf.
 
 Dla modeli 3D najwygodniejszy jest format `.glb` (jeden samodzielny plik). Plik
 `.gltf` może odwoływać się do osobnych tekstur i plików `.bin`, więc wymaga
@@ -132,91 +154,156 @@ dodatkowego wgrania i poprawienia ścieżek w modelu.
 ### `DELETE /api/media/:id` (wymaga tokenu)
 
 ```bash
-curl -X DELETE http://localhost:4000/api/media/1 \
+curl -X DELETE https://agat-hotel-api.onrender.com/api/media/1 \
   -H "Authorization: Bearer TWOJ_ADMIN_TOKEN"
 ```
 
-Wgrane pliki są serwowane pod `/uploads/<nazwa-pliku>`.
-
 ## Baza danych i pliki
 
-- Baza lokalna: `backend/prisma/dev.db` (ignorowana przez git).
 - Migracje: `backend/prisma/migrations/` (commitowane do repozytorium).
-- Pliki: `backend/uploads/` (ignorowane przez git).
-- Odświeżenie danych pokoi: `npm run db:seed`.
-- Podgląd bazy: `npm run db:studio`.
+- `npm run db:migrate` — tworzy/aktualizuje bazę lokalnie.
+- `npm run db:deploy` — stosuje migracje na produkcji.
+- `npm run db:seed` — bezpiecznie uzupełnia/aktualizuje 14 pokoi (upsert).
+- `npm run db:studio` — podgląd bazy.
+- Pliki lokalne: `backend/uploads/` (ignorowane przez git).
+- Pliki produkcyjne: bucket S3 (Neon Object Storage lub R2).
 
-Na produkcji **nie używaj** lokalnej bazy ani katalogu `uploads` bez trwałego
-dysku — dane znikną przy restarcie/wdrożeniu.
+Nie commituj `.env`, plików z `uploads/` ani danych bazy.
 
-## Hosting backendu
+## Hosting: Render + Neon (darmowy wariant)
 
-### Wariant 1 (najprostszy): Render + trwały dysk
-
-Ten wariant zachowuje SQLite i lokalne pliki. Potrzebujesz płatnego planu z
-trwałym dyskiem (np. Render Starter + Disk).
-
-1. Wypchnij repozytorium na GitHub.
-2. W Render wybierz **New → Web Service** i podłącz repozytorium.
-3. Ustaw:
-   - **Root Directory:** `backend`
-   - **Build Command:** `npm install && npm run build`
-   - **Start Command:** `npm run db:deploy && npm run db:seed && npm start`
-4. Dodaj **Persistent Disk**:
-   - mount path: `/var/data`
-   - rozmiar: np. 1 GB
-5. W **Environment** ustaw:
-   ```text
-   NODE_ENV=production
-   DATABASE_URL=file:/var/data/agat.db
-   UPLOAD_DIR=/var/data/uploads
-   PUBLIC_BASE_URL=https://twoja-nazwa.onrender.com
-   CORS_ORIGIN=https://twoja-apka.vercel.app
-   ADMIN_TOKEN=wygenerowany-dlugi-token
-   MAX_UPLOAD_MB=50
-   ```
-6. Wdróż usługę i sprawdź `https://twoja-nazwa.onrender.com/api/health`.
-7. W Vercel (frontend) dodaj zmienną:
-   ```text
-   VITE_API_URL=https://twoja-nazwa.onrender.com
-   ```
-8. Zrób ponowny deploy frontendu na Vercel.
-
-`db:deploy` wykonuje migracje, a `db:seed` bezpiecznie uzupełnia/aktualizuje pokoje
-(upsert) przy każdym starcie.
-
-### Wariant 2: Railway / Fly.io
-
-Działanie jest analogiczne: usługa Node uruchamiana z katalogu `backend`, trwały
-wolumen (np. `/data`), a w zmiennych:
+Docelowy układ:
 
 ```text
-DATABASE_URL=file:/data/agat.db
-UPLOAD_DIR=/data/uploads
-PUBLIC_BASE_URL=https://twoja-domena
+Vercel (frontend)  →  Render Free (Express API)  →  Neon Postgres
+                                                └→  Neon Object Storage
 ```
 
-Railway i Fly.io również oferują wolumeny trwałe.
+### 1. Baza PostgreSQL w Neon
 
-### Wariant 3: wszystko na Vercel (bez trwałego dysku)
+1. Załóż konto na [neon.com](https://neon.com) i utwórz projekt.
+2. Wybierz region **Europe (Frankfurt)** — będzie blisko Render Frankfurt.
+3. W sekcji **Connect** skopiuj **direct connection string** (nie pooler),
+   np.:
+   ```text
+   postgresql://user:haslo@ep-xxx.eu-central-1.aws.neon.tech/neondb?sslmode=require
+   ```
+4. Zachowaj go jako `DATABASE_URL`.
 
-Vercel nadaje się do frontendu, ale funkcje serverless nie mają trwałego dysku.
-Jeśli chcesz trzymać backend na Vercel:
+### 2. Bucket na pliki w Neon Object Storage
 
-1. Zmień bazę na PostgreSQL (np. Neon lub Supabase).
-2. W `schema.prisma` ustaw `provider = "postgresql"` i wygeneruj nowe migracje.
-3. Zamiast lokalnego `uploads/` użyj Cloudflare R2, AWS S3 lub Vercel Blob.
-4. Wdróż API jako Vercel Function (np. przez adapter Express) i ustaw zmienne
-   środowiskowe.
+1. W projekcie Neon wejdź w **Object storage**.
+2. Utwórz bucket `agat-media` z dostępem **`public_read`** (galeria musi czytać
+   pliki bez tokenu).
+3. Skopiuj **S3 endpoint** i **region** z konsoli, np.:
+   ```text
+   S3_ENDPOINT=https://br-xxxx.storage.c-2.eu-central-1.aws.neon.tech
+   S3_REGION=eu-central-1
+   ```
+4. Utwórz credential z uprawnieniami `storage:read` i `storage:write`.
+   Skopiuj `S3_ACCESS_KEY_ID` oraz `S3_SECRET_ACCESS_KEY` (sekret pokazuje się
+   tylko raz).
+5. `S3_PUBLIC_BASE_URL` możesz zostawić puste — aplikacja zbuduje adres jako
+   `${S3_ENDPOINT}/${S3_BUCKET}`.
 
-To rozwiązanie jest lepsze przy większym ruchu, ale wymaga więcej konfiguracji niż
-wariant Render + dysk.
+Object Storage jest dostępny m.in. w regionach AWS US East (Ohio/Virginia),
+Frankfurt i Singapur. Sprawdź dostępność w konsoli Neon.
+
+### 3. Backend na Render
+
+1. Wypchnij repozytorium na GitHub.
+2. W Render wybierz **New → Blueprint** i wskaż repozytorium.
+   Render odczyta `render.yaml` z katalogu głównego i utworzy usługę
+   `agat-hotel-api`.
+3. Uzupełnij zmienne oznaczone jako `sync: false`:
+   ```text
+   DATABASE_URL=postgresql://...?sslmode=require
+   CORS_ORIGIN=https://twoja-apka.vercel.app
+   PUBLIC_BASE_URL=https://agat-hotel-api.onrender.com
+   S3_ENDPOINT=https://br-xxxx.storage.c-2.eu-central-1.aws.neon.tech
+   S3_REGION=eu-central-1
+   S3_BUCKET=agat-media
+   S3_ACCESS_KEY_ID=...
+   S3_SECRET_ACCESS_KEY=...
+   ```
+4. `ADMIN_TOKEN` Render wygeneruje automatycznie. Odczytasz go później w
+   **Environment** usługi — będzie potrzebny do wgrywania plików.
+5. Wdróż. Render użyje `npm ci --include=dev`, ponieważ build i seed potrzebują
+   `prisma`, `typescript` i `tsx` z `devDependencies`. Następnie uruchomi:
+   ```text
+   npm run db:deploy && npm run db:seed && npm start
+   ```
+   czyli najpierw migracje i uzupełnienie pokoi, potem API.
+6. Sprawdź:
+   ```bash
+   curl https://agat-hotel-api.onrender.com/api/health
+   ```
+
+### 4. Frontend na Vercel
+
+W projekcie frontendu dodaj zmienną:
+
+```text
+VITE_API_URL=https://agat-hotel-api.onrender.com
+```
+
+Zrób ponowny deploy. Vite wbudowuje tę wartość w build, więc zmiana wymaga
+nowego wdrożenia.
+
+### 5. Test uploadu na produkcji
+
+```bash
+curl -X POST https://agat-hotel-api.onrender.com/api/media \
+  -H "Authorization: Bearer TWOJ_ADMIN_TOKEN" \
+  -F "title=Test" \
+  -F "file=@zdjecie.jpg"
+```
+
+Plik powinien pojawić się w galerii, a jego URL powinien wskazywać domenę Neon
+Object Storage.
+
+## Darmowe limity i ograniczenia
+
+- **Render Free:** 512 MB RAM, 0.1 CPU, 750 h/mies., 5 GB transferu, usypianie po
+  15 min bezczynności. Pierwsze żądanie po uśpieniu może trwać 30–60 s.
+- **Neon Free:** 1 GB PostgreSQL, 100 CU-hours/mies., 5 GB egressu, 5 GB Object
+  Storage. Compute usypia po 5 min i budzi się przy pierwszym zapytaniu.
+- Darmowe plany nie są objęte SLA i nie służą do poważnego ruchu produkcyjnego.
+- Render Free nie ma trwałego dysku — dlatego nie używamy tam SQLite ani
+  lokalnego `uploads/`.
+- Aby ograniczyć usypianie Render, możesz wysyłać `GET /api/health` co 10 minut
+  (np. UptimeRobot). 24/7 to około 730 z 750 darmowych godzin miesięcznie.
+- Rób własne kopie: `pg_dump` dla bazy i pobieranie bucketu dla plików. Free
+  plany nie mają pełnych automatycznych backupów.
+
+## Alternatywy
+
+- **Cloudflare R2** zamiast Neon Object Storage: 10 GB i darmowy egress, ale
+  aktywacja R2 wymaga karty. Wtedy ustaw `S3_ENDPOINT`, `S3_REGION=auto`,
+  `S3_BUCKET` i publiczny `S3_PUBLIC_BASE_URL` (r2.dev lub własna domena).
+- **Supabase** zamiast Neon: Postgres 500 MB + 1 GB plików, bez karty, ale
+  projekt pauzuje po 7 dniach bezczynności.
+- **Render Starter + dysk** (~7 USD/mies.): zostaje SQLite i lokalne `uploads/`,
+  usługa nie usypia. Wymaga mniej zmian w kodzie, ale nie jest darmowe.
 
 ## Checklista produkcyjna
 
-- Zmień `ADMIN_TOKEN` na długi, losowy i nie publikuj go.
+- Zmień/odczytaj `ADMIN_TOKEN` i nie publikuj go.
 - Ustaw `CORS_ORIGIN` dokładnie na adres frontendu (bez `*`).
-- Włącz HTTPS (Render/Railway robią to automatycznie).
-- Rób kopie zapasowe bazy i katalogu `uploads` (np. pobieranie dysku).
-- Dodaj rate limiting i ewentualnie captcha do formularzy publicznych.
-- Nie commituj `.env`, `dev.db` ani `uploads/`.
+- Włącz HTTPS (Render i Neon robią to automatycznie).
+- Rób kopie zapasowe bazy i bucketu.
+- Dodaj rate limiting i ewentualnie captcha do publicznych formularzy.
+- Nie commituj `.env`, `uploads/` ani danych bazy.
+
+## Rozwiązywanie problemów
+
+- **`P1001` / baza nieosiągalna:** sprawdź `DATABASE_URL`, `sslmode=require` i
+  czy używasz bezpośredniego połączenia Neon (bez `-pooler`).
+- **`Brak konfiguracji magazynu S3`:** uzupełnij wszystkie zmienne `S3_*` przy
+  `STORAGE_DRIVER=s3`.
+- **Upload 403 / brak pliku w galerii:** sprawdź, czy bucket ma dostęp
+  `public_read` i czy `S3_PUBLIC_BASE_URL` wskazuje właściwy bucket.
+- **CORS:** `CORS_ORIGIN` musi zawierać dokładny origin frontendu, np.
+  `https://agat-hotel.vercel.app`, bez końcowego `/`.
+- **Render usypia:** to normalne na planie Free; pierwsze żądanie może potrwać
+  kilkadziesiąt sekund.

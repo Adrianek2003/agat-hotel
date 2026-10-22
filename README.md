@@ -17,13 +17,23 @@ Babylon.js, React i prostego backendu Express + Prisma.
 
 ```text
 agat-hotel/
-├── frontend/   # React + Vite + Babylon.js
-└── backend/    # Express + TypeScript + Prisma + SQLite + upload plików
+├── frontend/        # React + Vite + Babylon.js
+├── backend/         # Express + TypeScript + Prisma + upload plików
+├── docker-compose.yml  # lokalny PostgreSQL
+└── render.yaml      # wdrożenie backendu na Render
 ```
 
 ## Uruchamianie lokalne
 
-### 1. Backend
+### 1. Baza danych
+
+Z katalogu głównego uruchom lokalny PostgreSQL:
+
+```bash
+docker compose up -d db
+```
+
+### 2. Backend
 
 ```bash
 cd backend
@@ -34,10 +44,11 @@ npm run db:seed
 npm run dev
 ```
 
-API działa pod `http://localhost:4000`. Szczegóły, endpointy i konfiguracja:
+API działa pod `http://localhost:4000`. Domyślnie pliki zapisują się lokalnie w
+`backend/uploads/`. Szczegóły, endpointy, konfiguracja S3 i hosting:
 [`backend/README.md`](backend/README.md).
 
-### 2. Frontend
+### 3. Frontend
 
 W drugim terminalu:
 
@@ -75,9 +86,9 @@ npm start
 
 - **Frontend (Vercel):** Root Directory `frontend`, Build Command `npm run build`,
   Output Directory `dist`. Dodaj zmienną `VITE_API_URL` z adresem backendu.
-- **Backend:** instrukcja krok po kroku dla Render / Railway / Fly.io oraz wariantu
-  Vercel + PostgreSQL + S3 znajduje się w
-  [`backend/README.md`](backend/README.md#hosting-backendu).
+- **Backend (Render + Neon):** darmowy wariant z PostgreSQL i S3-compatible
+  Object Storage. Blueprint znajduje się w `render.yaml`, a instrukcja krok po
+  kroku w [`backend/README.md`](backend/README.md#hosting-render--neon-darmowy-wariant).
 
 ## TODO
 
@@ -88,4 +99,5 @@ npm start
 - [x] Backend dla formularzy, bazy danych i plików (Express + Prisma)
 - [x] Podłączenie rezerwacji i kontaktu do API
 - [x] Hosting frontendu na Vercel
-- [ ] Hosting backendu na Render/Railway/Fly.io
+- [x] Przygotowanie backendu pod hosting (PostgreSQL + S3 + render.yaml)
+- [ ] Wdrożenie backendu na Render i podłączenie `VITE_API_URL`
